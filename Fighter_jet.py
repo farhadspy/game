@@ -5,7 +5,6 @@ import random
 
 
 
-
 class Spaceship(arcade.Sprite):
     def __init__(self ,w):
         super().__init__("class/spaceship/spaceship.png")
