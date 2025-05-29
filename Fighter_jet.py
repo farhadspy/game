@@ -36,7 +36,22 @@ class Spaceship(arcade.Sprite):
         self.center_y = max(24, min(height - 24, self.center_y))
         
     
-    
+class Bullet(arcade.Sprite):
+    def __init__(self, x, y):
+        super().__init__("class/spaceship/red_bullet.png")
+        self.center_x = x
+        self.center_y = y + 24  # شلیک از بالای سفینه
+        self.width = 50
+        self.height = 100
+        self.speed = 10
+        self.angle = 270  #چرخش 270 درجه
+
+    def update(self, delta_time: float):
+        self.center_y += self.speed
+        if self.center_y > 700 + 24:  # حذف تیرهای خارج از صفحه
+            self.remove_from_sprite_lists()
+            
+        
 class Enemy(arcade.Sprite):
     def __init__(self ,w ,h):
         super().__init__("class/spaceship/icons8-spaceship-60.png")
@@ -87,6 +102,10 @@ class Game(arcade.Window):
         self.enemy_spawn_timer = 0
         self.enemy_spawn_interval = 1.0
         
+        self.bullet_list = arcade.SpriteList()  # لیست برای تیرها
+        self.bullet_timer = 0  # تایمر برای محدودیت شلیک
+        self.bullet_interval = 0.2  # حداقل فاصله زمانی بین شلیک‌ها (ثانیه)
+        
         # متغیرها برای مدیریت پایان بازی
         self.game_over = False
         self.game_over_timer = 0
@@ -98,10 +117,11 @@ class Game(arcade.Window):
         self.background_list.draw()  # رسم پس زمینه
         self.spaceship_list.draw()  # رسم سفینه
         self.spaceship_enemy_list.draw()  # رسم سفینه دشمن
+        self.bullet_list.draw()  # رسم تیرها
         
         # نمایش پیام پایان بازی
         if self.game_over:
-            arcade.draw_text("Game Over!", 400, 350, arcade.color.RED, 48)
+            arcade.draw_text("Game Over☠️!", 400, 350, arcade.color.RED, 48)
         
     def on_key_press(self, symbol:int, modifiers:int):
         #print(symbol)
@@ -115,6 +135,13 @@ class Game(arcade.Window):
                 self.me.move("U")
             elif symbol == arcade.key.DOWN or symbol == arcade.key.S:
                 self.me.move("D")
+            elif symbol == arcade.key.SPACE:
+                # شلیک تیر
+                if self.bullet_timer <= 0:
+                    bullet = Bullet(self.me.center_x, self.me.center_y)
+                    self.bullet_list.append(bullet)
+                    self.bullet_timer = self.bullet_interval
+              
               
     def on_key_release(self, symbol: int, modifiers: int):
         # توقف حرکت هنگام رها کردن کلید
@@ -128,6 +155,7 @@ class Game(arcade.Window):
             # به‌روزرسانی موقعیت سفینه
             self.spaceship_list.update()
             self.spaceship_enemy_list.update()
+            self.bullet_list.update()  # به‌روزرسانی تیرها
             
             # محدود کردن سفینه به مرزهای صفحه
             self.me.Limit(self.width ,self.height)
@@ -140,12 +168,24 @@ class Game(arcade.Window):
                 self.enemy_spawn_timer = 0
                 self.enemy_spawn_interval = random.uniform(0.5, 2.0)  # فاصله تصادفی
                 
+            # به‌روزرسانی تایمر شلیک
+            if self.bullet_timer > 0:
+                self.bullet_timer -= delta_time
+                
             # حرکت دشمنان
             self.enemy.move(self.spaceship_enemy_list)
                 
             # حذف دشمنان خارج از صفحه
             self.enemy.delete_enemy(self.spaceship_enemy_list)
     
+
+            # بررسی برخورد تیر با دشمنان
+            for bullet in self.bullet_list:
+                hit_list = arcade.check_for_collision_with_list(bullet, self.spaceship_enemy_list)
+                if hit_list:
+                    bullet.remove_from_sprite_lists()  # حذف تیر
+                    for enemy in hit_list:
+                        enemy.remove_from_sprite_lists()  # حذف دشمن
                 
             # بررسی برخورد
             if arcade.check_for_collision_with_list(self.me, self.spaceship_enemy_list):
