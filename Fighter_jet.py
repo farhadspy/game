@@ -73,6 +73,41 @@ class Enemy(arcade.Sprite):
                     enemy.remove_from_sprite_lists()
     
     
+    
+class PauseMenu:
+    def __init__(self):
+        self.paused = False
+        self.show_pause_menu = False
+
+    def draw(self):
+        if self.paused and self.show_pause_menu:
+            arcade.draw_lrbt_rectangle_filled(
+                left=400,    # x - width/2
+                right=800,   # x + width/2
+                top=450,     # y + height/2
+                bottom=250,  # y - height/2
+                color= arcade.color.DARK_SLATE_BLUE
+            )
+            arcade.draw_text("Game Paused", 465, 400, arcade.color.WHITE, 36)
+            arcade.draw_text("R: Resume", 530, 350, arcade.color.WHITE, 24)
+            arcade.draw_text("Q: Quit", 550, 300, arcade.color.WHITE, 24)
+
+    def handle_key_press(self, symbol: int):
+        if symbol == arcade.key.ESCAPE:
+            self.paused = not self.paused
+            self.show_pause_menu = self.paused
+            return True
+        elif self.paused:
+            if symbol == arcade.key.R:
+                self.paused = False
+                self.show_pause_menu = False
+                return True
+            elif symbol == arcade.key.Q:
+                arcade.exit()
+                return True
+        return False
+    
+    
 class Game(arcade.Window):
     def __init__(self):
         super().__init__(width=1200, height=700 ,title="Space_Ship")
@@ -111,6 +146,9 @@ class Game(arcade.Window):
         self.game_over_timer = 0
         self.game_over_delay = 3.0  # ۳ ثانیه تاخیر برای نمایش پیام
         
+        # اضافه کردن منوی توقف
+        self.pause_menu = PauseMenu()
+        
     #show   
     def on_draw(self):
         self.clear()
@@ -122,9 +160,16 @@ class Game(arcade.Window):
         # نمایش پیام پایان بازی
         if self.game_over:
             arcade.draw_text("Game Over☠️!", 400, 350, arcade.color.RED, 48)
+            
+        # رسم منوی توقف
+        self.pause_menu.draw()
+            
         
     def on_key_press(self, symbol:int, modifiers:int):
         #print(symbol)
+        # ابتدا ورودی رو به منوی توقف می‌فرستیم
+        if self.pause_menu.handle_key_press(symbol):
+            return  # اگه منو ورودی رو پردازش کرد، ادامه نمی‌دیم
         if not self.game_over:
         # حرکت با کلیدهای جهت‌دار یا WASD
             if symbol == arcade.key.LEFT or symbol == arcade.key.A:
@@ -141,17 +186,17 @@ class Game(arcade.Window):
                     bullet = Bullet(self.me.center_x, self.me.center_y)
                     self.bullet_list.append(bullet)
                     self.bullet_timer = self.bullet_interval
-              
-              
+               
     def on_key_release(self, symbol: int, modifiers: int):
+        if not self.pause_menu.paused and not self.game_over:
         # توقف حرکت هنگام رها کردن کلید
-        if symbol in (arcade.key.LEFT, arcade.key.A, arcade.key.RIGHT, arcade.key.D):
-            self.me.Hold_the_button("X")
-        if symbol in (arcade.key.UP, arcade.key.W, arcade.key.DOWN, arcade.key.S):
-            self.me.Hold_the_button("Y")
+            if symbol in (arcade.key.LEFT, arcade.key.A, arcade.key.RIGHT, arcade.key.D):
+                self.me.Hold_the_button("X")
+            if symbol in (arcade.key.UP, arcade.key.W, arcade.key.DOWN, arcade.key.S):
+                self.me.Hold_the_button("Y")
                 
     def on_update(self ,delta_time: float):
-        if not self.game_over:
+        if not self.pause_menu.paused and not self.game_over:
             # به‌روزرسانی موقعیت سفینه
             self.spaceship_list.update()
             self.spaceship_enemy_list.update()
