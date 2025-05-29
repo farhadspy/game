@@ -14,6 +14,27 @@ class Spaceship(arcade.Sprite):
         self.height = 48        #ارتفاع سفینه
         self.speed = 8          # سرعت سفینه
         
+        
+    def move(self ,direction):
+        if direction == "L":
+            self.change_x = -self.speed
+        elif direction == "R":
+            self.change_x = self.speed
+        elif direction == "U":
+            self.change_y = self.speed
+        elif direction == "D":
+            self.change_y = -self.speed
+            
+    def Hold_the_button(self ,direction):
+        if direction == "X":
+            self.change_x = 0
+        if direction == "Y":
+            self.change_y = 0
+        
+    def Limit(self ,width ,height):
+        self.center_x = max(24, min(width - 24, self.center_x))
+        self.center_y = max(24, min(height - 24, self.center_y))
+        
     
     
 class Enemy(arcade.Sprite):
@@ -25,6 +46,16 @@ class Enemy(arcade.Sprite):
         self.width = 48   #عرض سفینه
         self.height = 48  #ارتفاع سفینه
         self.speed = 3
+        
+        
+    def move(self , spaceship_enemy_list):
+        for enemy in spaceship_enemy_list:
+                enemy.center_y -= enemy.speed
+                
+    def delete_enemy(self ,spaceship_enemy_list):
+        for enemy in spaceship_enemy_list:
+                if enemy.center_y < -24:
+                    enemy.remove_from_sprite_lists()
     
     
 class Game(arcade.Window):
@@ -77,20 +108,20 @@ class Game(arcade.Window):
         if not self.game_over:
         # حرکت با کلیدهای جهت‌دار یا WASD
             if symbol == arcade.key.LEFT or symbol == arcade.key.A:
-                self.me.change_x = -self.me.speed
+                self.me.move("L")
             elif symbol == arcade.key.RIGHT or symbol == arcade.key.D:
-                self.me.change_x = self.me.speed
+                self.me.move("R")
             elif symbol == arcade.key.UP or symbol == arcade.key.W:
-                self.me.change_y = self.me.speed
+                self.me.move("U")
             elif symbol == arcade.key.DOWN or symbol == arcade.key.S:
-                self.me.change_y = -self.me.speed
+                self.me.move("D")
               
     def on_key_release(self, symbol: int, modifiers: int):
         # توقف حرکت هنگام رها کردن کلید
         if symbol in (arcade.key.LEFT, arcade.key.A, arcade.key.RIGHT, arcade.key.D):
-            self.me.change_x = 0
+            self.me.Hold_the_button("X")
         if symbol in (arcade.key.UP, arcade.key.W, arcade.key.DOWN, arcade.key.S):
-            self.me.change_y = 0
+            self.me.Hold_the_button("Y")
                 
     def on_update(self ,delta_time: float):
         if not self.game_over:
@@ -99,8 +130,7 @@ class Game(arcade.Window):
             self.spaceship_enemy_list.update()
             
             # محدود کردن سفینه به مرزهای صفحه
-            self.me.center_x = max(24, min(self.width - 24, self.me.center_x))
-            self.me.center_y = max(24, min(self.height - 24, self.me.center_y))
+            self.me.Limit(self.width ,self.height)
             
             
             self.enemy_spawn_timer += delta_time
@@ -111,13 +141,11 @@ class Game(arcade.Window):
                 self.enemy_spawn_interval = random.uniform(0.5, 2.0)  # فاصله تصادفی
                 
             # حرکت دشمنان
-            for enemy in self.spaceship_enemy_list:
-                enemy.center_y -= enemy.speed
+            self.enemy.move(self.spaceship_enemy_list)
                 
             # حذف دشمنان خارج از صفحه
-            for enemy in self.spaceship_enemy_list:
-                if enemy.center_y < -24:
-                    enemy.remove_from_sprite_lists()
+            self.enemy.delete_enemy(self.spaceship_enemy_list)
+    
                 
             # بررسی برخورد
             if arcade.check_for_collision_with_list(self.me, self.spaceship_enemy_list):
