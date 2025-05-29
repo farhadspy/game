@@ -1,8 +1,6 @@
 import arcade
 import random
 
-#pip install arcade
-
 
 
 class Spaceship(arcade.Sprite):
@@ -35,7 +33,6 @@ class Spaceship(arcade.Sprite):
         self.center_x = max(24, min(width - 24, self.center_x))
         self.center_y = max(24, min(height - 24, self.center_y))
         
-    
 class Bullet(arcade.Sprite):
     def __init__(self, x, y):
         super().__init__("class/spaceship/red_bullet.png")
@@ -50,8 +47,7 @@ class Bullet(arcade.Sprite):
         self.center_y += self.speed
         if self.center_y > 700 + 24:  # حذف تیرهای خارج از صفحه
             self.remove_from_sprite_lists()
-            
-        
+    
 class Enemy(arcade.Sprite):
     def __init__(self ,w ,h):
         super().__init__("class/spaceship/icons8-spaceship-60.png")
@@ -63,16 +59,15 @@ class Enemy(arcade.Sprite):
         self.speed = 3
         
         
-    def move(self , spaceship_enemy_list):
+    def move(self, spaceship_enemy_list):
         for enemy in spaceship_enemy_list:
                 enemy.center_y -= enemy.speed
                 
-    def delete_enemy(self ,spaceship_enemy_list):
+    def delete_enemy(self, spaceship_enemy_list, score):
         for enemy in spaceship_enemy_list:
-                if enemy.center_y < -24:
-                    enemy.remove_from_sprite_lists()
-    
-    
+            if enemy.center_y < -24:
+                enemy.remove_from_sprite_lists()
+                score.add_score(-10)  # کسر 10 امتیاز هنگام خروج دشمن
     
 class PauseMenu:
     def __init__(self):
@@ -107,6 +102,45 @@ class PauseMenu:
                 return True
         return False
     
+class Score:
+    def __init__(self):
+        self.score = 0
+
+    def add_score(self, points):
+        self.score += points
+
+    def draw(self):
+        arcade.draw_text(f"Score: {self.score}", 1050, 650, arcade.color.WHITE, 24)
+
+    def is_game_over(self):
+        return self.score < 0  # بررسی امتیاز منفی
+           
+class Lives:
+    def __init__(self, max_lives=3):
+        self.max_lives = max_lives
+        self.current_lives = max_lives
+        self.lives_list = arcade.SpriteList()
+        for i in range(self.current_lives):
+            heart = arcade.Sprite("class/spaceship/heart.png")
+            heart.center_x = 50 + i * 40
+            heart.center_y = 650
+            heart.width = 30
+            heart.height = 30
+            self.lives_list.append(heart)
+
+    def lose_life(self):
+        if self.current_lives > 0:
+            self.current_lives -= 1
+            if self.lives_list:
+                self.lives_list.pop()
+            return True
+        return False
+
+    def draw(self):
+        self.lives_list.draw()
+
+    def is_game_over(self):
+        return self.current_lives <= 0
     
 class Game(arcade.Window):
     def __init__(self):
@@ -149,6 +183,10 @@ class Game(arcade.Window):
         # اضافه کردن منوی توقف
         self.pause_menu = PauseMenu()
         
+        # اضافه کردن کلاس‌های جدید
+        self.score = Score()
+        self.lives = Lives()
+        
     #show   
     def on_draw(self):
         self.clear()
@@ -156,10 +194,15 @@ class Game(arcade.Window):
         self.spaceship_list.draw()  # رسم سفینه
         self.spaceship_enemy_list.draw()  # رسم سفینه دشمن
         self.bullet_list.draw()  # رسم تیرها
+        self.lives.draw()  # نمایش جون‌ها
+        self.score.draw()  # نمایش امتیاز
         
-        # نمایش پیام پایان بازی
+        # نمایش پیام پایان بازی فقط در صورت game_over
         if self.game_over:
-            arcade.draw_text("Game Over☠️!", 400, 350, arcade.color.RED, 48)
+            if self.score.is_game_over():
+                arcade.draw_text("Game Over: Score Below Zero!", 200, 350, arcade.color.RED, 48)
+            elif self.lives.is_game_over():
+                arcade.draw_text("Game Over: No Lives Left!", 250, 350, arcade.color.RED, 48)
             
         # رسم منوی توقف
         self.pause_menu.draw()
@@ -215,13 +258,13 @@ class Game(arcade.Window):
                 
             # به‌روزرسانی تایمر شلیک
             if self.bullet_timer > 0:
-                self.bullet_timer -= delta_time
+                self.bullet_timer -= 20
                 
             # حرکت دشمنان
             self.enemy.move(self.spaceship_enemy_list)
                 
             # حذف دشمنان خارج از صفحه
-            self.enemy.delete_enemy(self.spaceship_enemy_list)
+            self.enemy.delete_enemy(self.spaceship_enemy_list, self.score)
     
 
             # بررسی برخورد تیر با دشمنان
@@ -231,11 +274,23 @@ class Game(arcade.Window):
                     bullet.remove_from_sprite_lists()  # حذف تیر
                     for enemy in hit_list:
                         enemy.remove_from_sprite_lists()  # حذف دشمن
-                
-            # بررسی برخورد
-            if arcade.check_for_collision_with_list(self.me, self.spaceship_enemy_list):
+                        self.score.add_score(10)  # اضافه کردن امتیاز
+            
+            
+            hit_list = arcade.check_for_collision_with_list(self.me, self.spaceship_enemy_list)            
+            if hit_list:
+                print("برخورد شناسایی شد!")  # پیام دیباگ برای اطمینان از شناسایی برخورد
+                if self.lives.lose_life():
+                    for enemy in hit_list:
+                        enemy.remove_from_sprite_lists()
+                    if self.lives.is_game_over():
+                        self.game_over = True
+                        print("جون تمام شد! بازی تمام شد.")
+            
+            if self.score.is_game_over():
                 self.game_over = True
-                print("برخورد! بازی تمام شد.")
+                print("امتیاز منفی شد! بازی تمام شد.")
+                
             
             # مدیریت تایمر پایان بازی
         if self.game_over:
@@ -246,7 +301,7 @@ class Game(arcade.Window):
     
     
     
-    
+  
 window = Game()
 
 
