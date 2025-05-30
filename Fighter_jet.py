@@ -189,7 +189,7 @@ class Game(arcade.Window):
         
     #show   
     def on_draw(self):
-        self.clear()
+        self.clear()     
         self.background_list.draw()  # رسم پس زمینه
         self.spaceship_list.draw()  # رسم سفینه
         self.spaceship_enemy_list.draw()  # رسم سفینه دشمن
@@ -298,11 +298,7 @@ class Game(arcade.Window):
             if self.game_over_timer >= self.game_over_delay:
                  arcade.exit()  # بستن بازی بعد از ۳ ثانیه
             
-    
-    
-    
+      
   
 window = Game()
-
-
 arcade.run()
